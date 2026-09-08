@@ -439,6 +439,7 @@ fn sk_bases(class: &str, id: &str) -> Vec<String> {
         ],
         "MAC" => vec![format!("electrical.chargers.{id}")],
         "APR" => vec![format!("electrical.alternators.{id}")],
+        "SCM" => vec![format!("electrical.solar.{id}")],
         _ => vec![],
     }
 }
@@ -649,6 +650,31 @@ fn map_field(
                 ("Battery temp.", "\u{b0}C") => {
                     celsius.map(|c| (format!("{alt}.battery.temperature"), num(c + 273.15)))
                 }
+                _ => None,
+            }
+        }
+        // support for the SCM class of devides, Solar Charge Controllers, currently the only model
+        // that supports MasterBus is the SCM60 MPPT-MB (product id 131906000)
+        "SCM" => {
+            let scm = format!("electrical.solar.{id}");
+            match (name, unit) {
+                // "Device state" (Standby/Charging/Fault/…) → deviceMode: the
+                // device-level state, orthogonal to the charge stage below.
+                ("Device state", _) => list_label.map(|s| (format!("{scm}.deviceMode"), text(s))),
+                // "Charge state" (Bulk/Absorption/Float/…) → chargingMode.
+                ("Charge state", _) => list_label.map(|s| (format!("{scm}.chargingMode"), text(s))),
+                ("Solar voltage", "V") => float.map(|v| (format!("{scm}.solarVoltage"), num(v))),
+                ("Charge current", "A") => float.map(|v| (format!("{scm}.chargeCurrent"), num(v))),
+                ("Battery voltage", "V") => {
+                    float.map(|v| (format!("{scm}.battery.voltage"), num(v)))
+                }
+                ("Battery temp.", "\u{b0}C") => {
+                    celsius.map(|c| (format!("{scm}.battery.temperature"), num(c + 273.15)))
+                }
+                // Total energy appears to be cumulative over the device lifetime
+                ("Total energy", "kWh") => float.map(|e| (format!("{scm}.totalEnergy"), num(e))),
+                // This appears to be a writeable boolean to enable/disable the charger
+                ("On/Off", _) => list_label.map(|s| (format!("{scm}.deviceMode"), text(s))),
                 _ => None,
             }
         }
