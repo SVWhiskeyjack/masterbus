@@ -46,6 +46,21 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   key, and delete the old directory. (#12)
 
 ### Added
+- **A bundled per-model suggestion database.** Keyed on **article number** and
+  field id, so it reaches the models the class-and-name heuristics cannot: the
+  two charger articles in #6 both advertise as `CHG` with unrelated field sets,
+  and one has had its output fields renamed by the installer. Suggestions are
+  now tiered — an exact entry for this article and firmware, then one for the
+  article, then the name guess — and the TUI says which tier a proposal came
+  from, because "known for this model" and "guessed from a name" deserve
+  different scrutiny. Every entry records its provenance. Ships with the two
+  charger articles from #6; add more in
+  `crates/masterbus-tools/src/suggestions/catalog.json`. (#12)
+- **`masterbus-dump` includes the host's mapping.** Whole, and as a `signalk`
+  path beside each mapped field, so a reported dump shows the bus and the
+  decisions made about it together — which is what lets a user's curation
+  become a bundled suggestion for the next person. Absent when there is no
+  mapping file. (#12)
 - **`masterbus-tui --mapping` edits the Signal K mapping.** The device list
   shows how many of each device's fields publish, the Monitoring tab gains a
   Signal K column, `+` and `-` map and unmap the selected field, `a` copies a
@@ -58,7 +73,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   metadata. Copying skips fields the target device does not have, so a cluster
   master's extra fields are not forced onto a plain member, and it keeps an
   instance the user already chose. Entries for devices that are off the bus are
-  preserved. (#12)
+  preserved. A path too long for the row wraps onto a continuation line rather
+  than being cut off, since the path is the whole point of the mode. (#12)
 - **A library target for `masterbus-tools`.** The crate was binaries only,
   which left `masterbus-signalk` and `masterbus-tui` unable to share code. Two
   modules to start: `signalk` (the SI unit each Signal K path leaf carries) and
@@ -96,6 +112,22 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   been discovered (else `output N`).
 
 ### Fixed
+- **The mapping editor records the instance a path actually uses.** Curated
+  paths are typed by hand and often do not contain the instance proposed for
+  the device: an `INT Nav Chg` gets mapped onto
+  `electrical.chargers.nav-battery` because that is what it charges. `instance`
+  is what "apply to this article" substitutes, so leaving it stale made that
+  copy substitute nothing and hand two devices the same Signal K node. The
+  instance is now taken from the committed path, and a copy that would
+  substitute nothing is skipped rather than written. Found in real use. (#12)
+- **The seed no longer maps two fields of one device onto the same Signal K
+  path.** Found by deploying onto a live 14-device bus: a battery reports the
+  same six measurements once for its cluster and once for itself, so the seed
+  produced twelve entries writing six paths, coalescing to whichever arrived
+  last. An alternator does the same for battery voltage across its Battery and
+  Shunt groups, which the old code documented as harmless but which is visible
+  and fixable now that mappings are per field. The lowest field id wins; the
+  rest are left out for a human to add deliberately. (#12)
 - **Device property strings are trimmed.** At least one shipping charger
   reports its article number with a trailing space (`"44010250 "`), which
   silently defeats every lookup keyed on it — the bundled string catalog, and
