@@ -209,6 +209,26 @@ fn handle_key(app: &mut App, key: KeyEvent) {
     // The path editor owns every key while open: a Signal K path is free text
     // and may contain any of the letters the browse-mode bindings use.
     if app.path_editing() {
+        // The truth-table stage is a small list, not a text field.
+        if app.truth_editing() {
+            match key.code {
+                KeyCode::Up | KeyCode::Char('k') => app.truth_move(-1),
+                KeyCode::Down | KeyCode::Char('j') => app.truth_move(1),
+                KeyCode::Char(' ') => app.truth_toggle(),
+                // Before the bare `n` below, which would swallow it.
+                KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.map_editor_toggle_invert()
+                }
+                KeyCode::Char('t') | KeyCode::Char('y') | KeyCode::Char('1') => app.truth_set(true),
+                KeyCode::Char('f') | KeyCode::Char('n') | KeyCode::Char('0') => {
+                    app.truth_set(false)
+                }
+                KeyCode::Enter => app.commit_truth(),
+                KeyCode::Esc => app.truth_back(),
+                _ => {}
+            }
+            return;
+        }
         match key.code {
             KeyCode::Enter => app.commit_map(),
             KeyCode::Esc => app.cancel_map(),
